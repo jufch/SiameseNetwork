@@ -16,6 +16,9 @@ class ModelTrainer:
         self.test_csv = test_csv
         self.image_dir = image_dir
         self.seed = seed
+        self.train_datagen = None
+        self.validation_datagen = None
+        self.test_datagen = None
         
     def load_data(self):
         if self.seed:
@@ -39,11 +42,11 @@ class ModelTrainer:
         self.model.compile(optimizer=optimizer, loss = loss, metrics=metrics)
         
     def train_model(self, batch_size, epochs, model_save_name):
-        train_datagen = ImageDataGenerator(rescale=1./255)
-        validation_datagen = ImageDataGenerator(rescale=1./255)
-        test_datagen = ImageDataGenerator(rescale=1./255)
+        self.train_datagen = ImageDataGenerator(rescale=1./255)
+        self.validation_datagen = ImageDataGenerator(rescale=1./255)
+        self.test_datagen = ImageDataGenerator(rescale=1./255)
 
-        train_generator = train_datagen.flow_from_dataframe(
+        train_generator = self.train_datagen.flow_from_dataframe(
             dataframe=self.train_df,
             directory=self.image_dir,
             x_col="file_path",
@@ -53,7 +56,7 @@ class ModelTrainer:
             batch_size=batch_size,
             class_mode='sparse')
 
-        validation_generator = validation_datagen.flow_from_dataframe(
+        validation_generator = self.validation_datagen.flow_from_dataframe(
             dataframe=self.validation_df,
             directory=self.image_dir,
             x_col="file_path",
@@ -62,25 +65,90 @@ class ModelTrainer:
             color_mode="grayscale",
             batch_size=batch_size,
             class_mode='sparse')
-        
+
+        # Initialize variable to track the best validation accuracy
+        best_val_accuracy = 0.0
+        best_model_path = ""
+
         # Define the checkpoint to save the best model
         model_checkpoint_callback = ModelCheckpoint(
             filepath=model_save_name,  # File path to save the model
             save_best_only=True,  # Only save the best model
             monitor='val_accuracy',  # Monitor validation accuracy
-            mode='max')  # Save the model with max validation accuracy
+            mode='max',  # Save the model with max validation accuracy
+            verbose=1)  # Log when a model is being saved
 
         self.history = self.model.fit(
             train_generator,
             steps_per_epoch=self.train_df.shape[0] // batch_size,
             epochs=epochs,
             validation_data=validation_generator,
-            validation_steps=self.validation_df.shape[0] // batch_size)
+            validation_steps=self.validation_df.shape[0] // batch_size,
+            callbacks=[model_checkpoint_callback])
+
+        # Check if the last model had the best validation accuracy
+        final_val_accuracy = self.history.history['val_accuracy'][-1]
+        if final_val_accuracy > best_val_accuracy:
+            best_val_accuracy = final_val_accuracy
+            best_model_path = model_save_name
+            self.model.save(best_model_path)
+            print(f"New best model with validation accuracy {best_val_accuracy} saved as {best_model_path}")
+        else:
+            print(f"No new best model found. Best validation accuracy remains {best_val_accuracy}.")
+            
+    
+    # def train_model(self, batch_size, epochs, model_save_name):
+    #     # global train_datagen, validation_datagen, test_datagen
+    #     self.train_datagen = ImageDataGenerator(rescale=1./255)
+    #     self.validation_datagen = ImageDataGenerator(rescale=1./255)
+    #     self.test_datagen = ImageDataGenerator(rescale=1./255)
+
+    #     train_generator = self.train_datagen.flow_from_dataframe(
+    #         dataframe=self.train_df,
+    #         directory=self.image_dir,
+    #         x_col="file_path",
+    #         y_col="label",
+    #         target_size=(96, 96),
+    #         color_mode="grayscale",
+    #         batch_size=batch_size,
+    #         class_mode='sparse')
+
+    #     validation_generator = self.validation_datagen.flow_from_dataframe(
+    #         dataframe=self.validation_df,
+    #         directory=self.image_dir,
+    #         x_col="file_path",
+    #         y_col="label",
+    #         target_size=(96, 96),
+    #         color_mode="grayscale",
+    #         batch_size=batch_size,
+    #         class_mode='sparse')
+        
+    #     # Define the checkpoint to save the best model
+    #     model_checkpoint_callback = ModelCheckpoint(
+    #         filepath=model_save_name,  # File path to save the model
+    #         save_best_only=True,  # Only save the best model
+    #         monitor='val_accuracy',  # Monitor validation accuracy
+    #         mode='max')  # Save the model with max validation accuracy
+
+    #     self.history = self.model.fit(
+    #         train_generator,
+    #         steps_per_epoch=self.train_df.shape[0] // batch_size,
+    #         epochs=epochs,
+    #         validation_data=validation_generator,
+    #         validation_steps=self.validation_df.shape[0] // batch_size,
+    #         callbacks=[model_checkpoint_callback])
         
         
         
-    def evaluate_model(self):
-        test_generator = test_datagen.flow_from_dataframe(
+    #     # After training, save the final model regardless of its performance
+    #     final_model_path = "final_" + model_save_name  # Prefixing with 'final_' to differentiate
+    #     self.model.save(final_model_path)
+    #     print(f"Final model saved as {final_model_path}")
+        
+        
+    def evaluate_model(self, batch_size):
+        global test_generator
+        test_generator = self.test_datagen.flow_from_dataframe(
             dataframe=self.test_df,
             directory=self.image_dir,
             x_col="file_path",
@@ -93,7 +161,7 @@ class ModelTrainer:
         test_loss, test_acc = self.model.evaluate(test_generator, steps=self.test_df.shape[0] // batch_size)
         print(f"Test accuracy: {test_acc}, Test loss: {test_loss}")
         
-    def plot_training_history(self):
+    def plot_training_history(self, epochs):
         acc = self.history.history['accuracy']
         val_acc = self.history.history['val_accuracy']
         loss = self.history.history['loss']
