@@ -5,6 +5,7 @@ import seaborn as sns
 from sklearn.utils import shuffle
 from sklearn.metrics import confusion_matrix
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 class ModelTrainer:
     
@@ -37,7 +38,7 @@ class ModelTrainer:
     def compile_model(self, optimizer, loss, metrics):
         self.model.compile(optimizer=optimizer, loss = loss, metrics=metrics)
         
-    def train_model(self, batch_size, epochs):
+    def train_model(self, batch_size, epochs, model_save_name):
         train_datagen = ImageDataGenerator(rescale=1./255)
         validation_datagen = ImageDataGenerator(rescale=1./255)
         test_datagen = ImageDataGenerator(rescale=1./255)
@@ -61,6 +62,13 @@ class ModelTrainer:
             color_mode="grayscale",
             batch_size=batch_size,
             class_mode='sparse')
+        
+        # Define the checkpoint to save the best model
+        model_checkpoint_callback = ModelCheckpoint(
+            filepath=model_save_name,  # File path to save the model
+            save_best_only=True,  # Only save the best model
+            monitor='val_accuracy',  # Monitor validation accuracy
+            mode='max')  # Save the model with max validation accuracy
 
         self.history = self.model.fit(
             train_generator,
@@ -68,6 +76,8 @@ class ModelTrainer:
             epochs=epochs,
             validation_data=validation_generator,
             validation_steps=self.validation_df.shape[0] // batch_size)
+        
+        
         
     def evaluate_model(self):
         test_generator = test_datagen.flow_from_dataframe(
