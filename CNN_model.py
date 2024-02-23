@@ -160,6 +160,8 @@ class ModelTrainer:
 
         test_loss, test_acc = self.model.evaluate(test_generator, steps=self.test_df.shape[0] // batch_size)
         print(f"Test accuracy: {test_acc}, Test loss: {test_loss}")
+
+
         
     def plot_training_history(self, epochs):
         acc = self.history.history['accuracy']
@@ -183,6 +185,28 @@ class ModelTrainer:
         plt.title('Training and Validation Loss')
         plt.show()
         
+    # def plot_confusion_matrix(self):
+    #     y_pred = self.model.predict(test_generator)
+    #     y_pred = np.argmax(y_pred, axis=1)
+    #     y_true = test_generator.classes
+    #     print(test_generator.classes)
+    #     print(np.unique(test_generator.classes, return_counts=True))
+    #     y_pred_classes = np.argmax(y_pred, axis=1)
+    #     print("Predicted classes:", y_pred_classes)
+    #     print("True classes:", y_true)
+    #     print("Unique predicted classes:", np.unique(y_pred_classes))
+    #     class_names = list(test_generator.class_indices.keys())
+        
+    #     cm = confusion_matrix(y_true, y_pred)
+    #     cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]  # Normalize confusion matrix
+
+    #     plt.figure(figsize=(8, 6))
+    #     sns.heatmap(cm_normalized, annot=cm, cmap='Blues', fmt='d', xticklabels=class_names, yticklabels=class_names)
+    #     plt.xlabel('Predicted labels')
+    #     plt.ylabel('True labels')
+    #     plt.title('Confusion Matrix')
+    #     plt.show()
+        
     def plot_confusion_matrix(self):
         y_pred = self.model.predict(test_generator)
         y_pred = np.argmax(y_pred, axis=1)
@@ -190,11 +214,37 @@ class ModelTrainer:
         class_names = list(test_generator.class_indices.keys())
         
         cm = confusion_matrix(y_true, y_pred)
-        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]  # Normalize confusion matrix
+        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         
-        plt.figure(figsize=(8, 6))  # Adjust the figure size as needed
-        sns.heatmap(cm, annot=True, cmap='Blues', fmt='.2f', xticklabels=class_names, yticklabels=class_names)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm_normalized, annot=False, cmap='Blues', fmt='.2f', xticklabels=class_names, yticklabels=class_names)
+
+        for i in range(len(class_names)):
+            for j in range(len(class_names)):
+                text = plt.text(j + 0.5, i + 0.5, f'{cm_normalized[i, j] * 100:.2f}%',
+                                ha='center', va='center', color='black')
+
         plt.xlabel('Predicted labels')
         plt.ylabel('True labels')
         plt.title('Confusion Matrix')
         plt.show()
+
+
+        
+    # def plot_confusion_matrix(self):
+    #     y_pred = self.model.predict(test_generator)
+    #     y_pred = np.argmax(y_pred, axis=1)
+    #     # cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    #     y_true = test_generator.classes
+    #     class_names = list(test_generator.class_indices.keys())
+        
+    #     cm = confusion_matrix(y_true, y_pred)
+    #     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]  # Normalize confusion matrix
+        
+    #     plt.figure(figsize=(8, 6))  # Adjust the figure size as needed
+    #     sns.heatmap(cm, annot=True, cmap='Blues', fmt='.2f', xticklabels=class_names, yticklabels=class_names)
+    #     plt.xlabel('Predicted labels')
+    #     plt.ylabel('True labels')
+    #     plt.title('Confusion Matrix')
+    #     plt.show()
+        
