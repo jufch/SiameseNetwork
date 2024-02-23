@@ -6,11 +6,32 @@ from sklearn.utils import shuffle
 from sklearn.metrics import confusion_matrix
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.callbacks import ModelCheckpoint
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2D, BatchNormalization
+from tensorflow.keras.models import Sequential
+
+def simple_cnn(input_shape, num_classes):
+    model = Sequential([
+        Conv2D(32, (3,3), activation='relu', input_shape=input_shape),
+        MaxPooling2D((2,2)),
+        Conv2D(64, (3,3), activation='relu'),
+        MaxPooling2D((2,2)),
+        Conv2D(128, (3,3), activation='relu'),
+        MaxPooling2D((2,2)),
+        Flatten(),
+        Dense(1024, activation='relu'),
+        Dense(128, activation='relu'),
+        Dense(num_classes, activation='softmax')
+    ])
+    return model
+
+input_shape = (96, 96, 1)
+num_classes = 3
 
 class ModelTrainer:
     
-    def __init__(self, model, train_csv, validation_csv, test_csv, image_dir, seed = None):
-        self.model = model
+    def __init__(self,  build_model_func, train_csv, validation_csv, test_csv, image_dir, seed = None):
+        # self.model = model
         self.train_csv = train_csv
         self.validation_csv = validation_csv
         self.test_csv = test_csv
@@ -19,6 +40,13 @@ class ModelTrainer:
         self.train_datagen = None
         self.validation_datagen = None
         self.test_datagen = None
+        self.build_model = build_model_func
+        self.model = self.build_model()  # Call the function to create the model
+
+    def build_model(self):
+    # Your model building code here
+    # For example:
+        return simple_cnn(input_shape, num_classes)
         
     def load_data(self):
         if self.seed:
@@ -228,6 +256,19 @@ class ModelTrainer:
         plt.ylabel('True labels')
         plt.title('Confusion Matrix')
         plt.show()
+
+    def reset_model(self, model):
+    # Clear the TensorFlow session
+        tf.keras.backend.clear_session()
+
+        # Re-initialize the model
+        # self.model = model  # Re-create the model as desired
+        self.model = self.build_model()  # Call the function to create the model
+        self.history = None
+        self.test_loss = None
+        self.test_accuracy = None
+        self.validation_loss = None
+        self.validation_accuracy = None    
 
 
         
