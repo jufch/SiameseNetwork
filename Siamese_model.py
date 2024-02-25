@@ -8,7 +8,7 @@ from tensorflow.keras.layers import Input, Lambda, Dense
 import tensorflow.keras.backend as K
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.callbacks import ModelCheckpoint
@@ -105,15 +105,19 @@ class SiameseTrainer:
         
         plt.figure(figsize=(12,4))
         plt.subplot(1, 2, 1)
-        plt.plot(epochs, acc, 'bo', label='Training accuracy')
-        plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
+        plt.plot(epochs, acc, label='Training accuracy')
+        plt.plot(epochs, val_acc, label='Validation accuracy')
         plt.title('Training and validation accuracy')
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
         plt.legend()
         
         plt.subplot(1, 2, 2)
-        plt.plot(epochs, loss, 'bo', label='Training loss')
-        plt.plot(epochs, val_loss, 'b', label='Validation loss')
+        plt.plot(epochs, loss, label='Training loss')
+        plt.plot(epochs, val_loss, label='Validation loss')
         plt.title('Training and validation loss')
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
         plt.legend()
         
         plt.show()
@@ -123,21 +127,100 @@ class SiameseTrainer:
         print("Test accuracy: ", test_acc)
         
         
-    def plot_confusion_matrix(self, test_pairs, test_labels, threshold=0.5):
-        if self.history is None:
-            print("No training history available")
-            return
+    # def plot_confusion_matrix(self, test_pairs, test_labels, threshold=0.5):
+    #     if self.history is None:
+    #         print("No training history available")
+    #         return
         
-        y_pred = self.model.predict([test_pairs[:, 0], test_pairs[:, 1]])
+    #     y_pred = self.model.predict([test_pairs[:, 0], test_pairs[:, 1]])
+    #     y_pred = (y_pred > threshold).astype(int)
+    #     y_true = test_labels.astype(int)
+        
+    #     cm = confusion_matrix(y_true, y_pred)
+    #     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    #     plt.xlabel('Predicted label')
+    #     plt.ylabel('True label')
+    #     plt.show()
+        
+    def plot_confusion_matrix_siamese(test_pairs, test_labels, model, threshold=0.5):
+    # Predict the similarity for the test pairs
+        y_pred = model.predict([test_pairs[:, 0], test_pairs[:, 1]])
         y_pred = (y_pred > threshold).astype(int)
         y_true = test_labels.astype(int)
         
+        # Calculate the confusion matrix
         cm = confusion_matrix(y_true, y_pred)
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-        plt.xlabel('Predicted label')
-        plt.ylabel('True label')
+        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        
+        # Define class names for binary classification
+        class_names = ['Dissimilar', 'Similar']
+        
+        # Plotting
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm_normalized, annot=False, cmap='Blues', fmt='.2f', xticklabels=class_names, yticklabels=class_names)
+        
+        # Adding text annotation for percentages
+        for i in range(len(class_names)):
+            for j in range(len(class_names)):
+                percentage = f'{cm_normalized[i, j] * 100:.2f}%'
+                plt.text(j + 0.5, i + 0.5, percentage, ha='center', va='center', color='black')
+        
+        plt.xlabel('Predicted labels')
+        plt.ylabel('True labels')
+        plt.title('Confusion Matrix')
         plt.show()
         
+    def predict(self, image1, image2):
+        img1 = load_img(image1, target_size=self.input_shape)
+        img2 = load_img(image2, target_size=self.input_shape)
+        
+        img1 = img_to_array(img1)
+        img2 = img_to_array(img2)
+        
+        img1 = img1 / 255.0
+        img2 = img2 / 255.0
+        
+        img1 = np.expand_dims(img1, axis=0)
+        img2 = np.expand_dims(img2, axis=0)
+        
+        similarity = self.model.predict([img1, img2])
+        return similarity
+    
+    def evaluate_classification(self, test_data, reference_images, threshold=0.5):
+    # test_data: list of tuples (image, true_label)
+    # reference_images: dict with class names as keys and lists of reference image tensors as values
+    
+        predicted_labels = []
+        true_labels = []
+        
+        for image, true_label in test_data:
+            similarities = []
+            for class_name, refs in reference_images.items():
+                # Calculate similarity with reference images for each class
+                class_similarity = np.mean([
+                    self.model.predict([image, ref_image])[0][0] for ref_image in refs
+                ])
+                similarities.append((class_name, class_similarity))
+            
+            # Classify the image to the class with the highest similarity
+            predicted_class = max(similarities, key=lambda x: x[1])[0]
+            predicted_labels.append(predicted_class)
+            true_labels.append(true_label)
+        
+        # Calculate the confusion matrix
+        cm = confusion_matrix(true_labels, predicted_labels, labels=list(reference_images.keys()))
+        
+        # Plot the confusion matrix
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=reference_images.keys(), yticklabels=reference_images.keys())
+        plt.xlabel('Predicted labels')
+        plt.ylabel('True labels')
+        plt.title('Confusion Matrix')
+        plt.show()
+        
+        # Print the classification report
+        print(classification_report(true_labels, predicted_labels, target_names=reference_images.keys()))
+        
+        return cm
     
         
         
