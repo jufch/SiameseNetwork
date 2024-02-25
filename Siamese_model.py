@@ -11,6 +11,8 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from tensorflow.keras.callbacks import ModelCheckpoint
+
 
 
 class SiameseTrainer:
@@ -59,11 +61,35 @@ class SiameseTrainer:
     #                                            steps_per_epoch=steps_per_epoch,
     #                                            validation_steps=validation_steps)
     
-    def train_model(self, train_pairs, train_labels, val_pairs, val_labels, epochs, batch_size):
+    def train_model(self, train_pairs, train_labels, val_pairs, val_labels, epochs, batch_size, model_save_name):
+
+        # Initialize variable to track the best validation accuracy
+        best_val_accuracy = 0.0
+        best_model_path = ""
+
+        # Define the checkpoint to save the best model
+        model_checkpoint_callback = ModelCheckpoint(
+            filepath=model_save_name,  # File path to save the model
+            save_best_only=True,  # Only save the best model
+            monitor='val_accuracy',  # Monitor validation accuracy
+            mode='max',  # Save the model with max validation accuracy
+            verbose=1)  # Log when a model is being saved
+        
         self.history = self.model.fit([train_pairs[:, 0], train_pairs[:, 1]], train_labels,
                                      validation_data=([val_pairs[:, 0], val_pairs[:, 1]], val_labels),
                                      epochs=epochs,
-                                     batch_size=batch_size)
+                                     batch_size=batch_size,
+                                     callbacks = [model_checkpoint_callback])
+        
+        # Check if the last model had the best validation accuracy
+        final_val_accuracy = self.history.history['val_accuracy'][-1]
+        if final_val_accuracy > best_val_accuracy:
+            best_val_accuracy = final_val_accuracy
+            best_model_path = model_save_name
+            self.model.save(best_model_path)
+            print(f"New best model with validation accuracy {best_val_accuracy} saved as {best_model_path}")
+        else:
+            print(f"No new best model found. Best validation accuracy remains {best_val_accuracy}.")
         
     def plot_training(self):
         if self.history is None:
