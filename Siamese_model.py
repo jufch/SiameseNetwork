@@ -3,12 +3,14 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.models import Model
-from tensorflow.layers import Input, Lambda, Dense
+# from tensorflow.layers import Input, Lambda, Dense
+from tensorflow.keras.layers import Input, Lambda, Dense
 import tensorflow.keras.backend as K
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
 
 class SiameseTrainer:
@@ -27,6 +29,7 @@ class SiameseTrainer:
     def eucl_dist_output_shape(self, shapes):
         shape1, shape2 = shapes
         return (shape1[0], 1)
+    
         
     def build_model(self):
         left_input = Input(self.input_shape)
