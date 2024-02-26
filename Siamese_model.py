@@ -12,6 +12,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 
 
@@ -61,7 +62,7 @@ class SiameseTrainer:
     #                                            steps_per_epoch=steps_per_epoch,
     #                                            validation_steps=validation_steps)
     
-    def train_model(self, train_pairs, train_labels, val_pairs, val_labels, epochs, batch_size, model_save_name):
+    def train_model(self, train_pairs, train_labels, val_pairs, val_labels, epochs, batch_size, model_save_name, callbacks=None):
 
         # Initialize variable to track the best validation accuracy
         best_val_accuracy = 0.0
@@ -75,11 +76,20 @@ class SiameseTrainer:
             mode='max',  # Save the model with max validation accuracy
             verbose=1)  # Log when a model is being saved
         
+        # Define early stopping callback
+        early_stopping_callback = EarlyStopping(
+            monitor='val_loss',  # Monitor the validation loss
+            patience=5,  # Number of epochs with no improvement after which training will be stopped
+            restore_best_weights=True,  # Restore model weights from the epoch with the best value of the monitored quantity
+            verbose=1)
+        
+        reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, verbose=1, mode = 'min')
+        
         self.history = self.model.fit([train_pairs[:, 0], train_pairs[:, 1]], train_labels,
                                      validation_data=([val_pairs[:, 0], val_pairs[:, 1]], val_labels),
                                      epochs=epochs,
                                      batch_size=batch_size,
-                                     callbacks = [model_checkpoint_callback])
+                                     callbacks = [model_checkpoint_callback, early_stopping_callback, reduce_lr])
         
         # Check if the last model had the best validation accuracy
         final_val_accuracy = self.history.history['val_accuracy'][-1]
