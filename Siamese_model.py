@@ -89,7 +89,7 @@ class SiameseTrainer:
                                      validation_data=([val_pairs[:, 0], val_pairs[:, 1]], val_labels),
                                      epochs=epochs,
                                      batch_size=batch_size,
-                                     callbacks = [model_checkpoint_callback, early_stopping_callback, reduce_lr])
+                                     callbacks = [model_checkpoint_callback, reduce_lr])
         
         # Check if the last model had the best validation accuracy
         final_val_accuracy = self.history.history['val_accuracy'][-1]
