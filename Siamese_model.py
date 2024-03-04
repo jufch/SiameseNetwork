@@ -3,7 +3,6 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.models import Model
-# from tensorflow.layers import Input, Lambda, Dense
 from tensorflow.keras.layers import Input, Lambda, Dense
 import tensorflow.keras.backend as K
 import matplotlib.pyplot as plt
@@ -17,6 +16,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 
 class SiameseTrainer:
+    '''A class to train and evaluate a Siamese model on ship images.'''
     def __init__(self, base_model_func, input_shape, num_classes):
         self.base_model_func = base_model_func
         self.input_shape = input_shape
@@ -25,16 +25,19 @@ class SiameseTrainer:
         self.history = None
         
     def euclidean_distance(self, vects):
+        '''Compute the Euclidean distance between two vectors'''
         x, y = vects
         sum_square = K.sum(K.square(x - y), axis=1, keepdims=True)
         return K.sqrt(K.maximum(sum_square, K.epsilon()))
     
     def eucl_dist_output_shape(self, shapes):
+        '''Find the shape of the output of the Euclidean distance function'''
         shape1, shape2 = shapes
         return (shape1[0], 1)
     
         
     def build_model(self):
+        '''Create a Siamese model with a base model and a similarity score layer.'''
         left_input = Input(self.input_shape)
         right_input = Input(self.input_shape)
         
@@ -53,17 +56,11 @@ class SiameseTrainer:
         return siamese_net
     
     def compile_model(self, optimizer, loss):
+        '''Compile the Siamese model with the given optimizer and loss function.'''
         self.model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
-        
-    # def train_model(self, train_generator, val_generator, epochs, steps_per_epoch, validation_steps):
-    #     self.history = self.model.fit_generator(train_generator, 
-    #                                            validation_data=val_generator,
-    #                                            epochs=epochs,
-    #                                            steps_per_epoch=steps_per_epoch,
-    #                                            validation_steps=validation_steps)
     
     def train_model(self, train_pairs, train_labels, val_pairs, val_labels, epochs, batch_size, model_save_name, callbacks=None):
-
+        '''Train the Siamese model on the training data and validate it on the validation data. Save the best model based on validation accuracy.'''
         # Initialize variable to track the best validation accuracy
         best_val_accuracy = 0.0
         best_model_path = ""
@@ -133,26 +130,13 @@ class SiameseTrainer:
         plt.show()
         
     def evaluate_model(self, test_pairs, test_labels):
+        '''Evaluate the model on the test data and print the test accuracy.'''
         test_loss, test_acc = self.model.evaluate([test_pairs[:, 0], test_pairs[:, 1]], test_labels)
         print("Test accuracy: ", test_acc)
         
         
-    # def plot_confusion_matrix(self, test_pairs, test_labels, threshold=0.5):
-    #     if self.history is None:
-    #         print("No training history available")
-    #         return
-        
-    #     y_pred = self.model.predict([test_pairs[:, 0], test_pairs[:, 1]])
-    #     y_pred = (y_pred > threshold).astype(int)
-    #     y_true = test_labels.astype(int)
-        
-    #     cm = confusion_matrix(y_true, y_pred)
-    #     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-    #     plt.xlabel('Predicted label')
-    #     plt.ylabel('True label')
-    #     plt.show()
-        
     def plot_confusion_matrix_siamese(test_pairs, test_labels, model, threshold=0.5):
+        '''Plot the confusion matrix for the Siamese model.'''
     # Predict the similarity for the test pairs
         y_pred = model.predict([test_pairs[:, 0], test_pairs[:, 1]])
         y_pred = (y_pred > threshold).astype(int)
@@ -181,6 +165,7 @@ class SiameseTrainer:
         plt.show()
         
     def predict(self, image1, image2):
+        '''Predict the similarity between two images.'''
         img1 = load_img(image1, target_size=self.input_shape)
         img2 = load_img(image2, target_size=self.input_shape)
         
@@ -199,7 +184,7 @@ class SiameseTrainer:
     def evaluate_classification(self, test_data, reference_images, threshold=0.5):
     # test_data: list of tuples (image, true_label)
     # reference_images: dict with class names as keys and lists of reference image tensors as values
-    
+        '''Evaluate the model on the test data and print the classification report and confusion matrix.'''
         predicted_labels = []
         true_labels = []
         
