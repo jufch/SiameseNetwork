@@ -11,6 +11,7 @@ from tensorflow.keras.layers import Dense, Conv2D, Flatten, Dropout, MaxPooling2
 from tensorflow.keras.models import Sequential
 
 def simple_cnn(input_shape, num_classes):
+    '''Create a simple CNN model with three convolutional layers, max pooling layers, and two dense layers.'''
     model = Sequential([
         Conv2D(32, (3,3), activation='relu', input_shape=input_shape),
         MaxPooling2D((2,2)),
@@ -29,8 +30,10 @@ input_shape = (96, 96, 1)
 num_classes = 3
 
 class ModelTrainer:
+    '''A class to train and evaluate a simple CNN model on ship images.'''
     
     def __init__(self,  build_model_func, train_csv, validation_csv, test_csv, image_dir, seed = None):
+        '''Initialize the model trainer with the model, training, validation, and test data, and the image directory.'''
         # self.model = model
         self.train_csv = train_csv
         self.validation_csv = validation_csv
@@ -44,11 +47,11 @@ class ModelTrainer:
         self.model = self.build_model()  # Call the function to create the model
 
     def build_model(self):
-    # Your model building code here
-    # For example:
+        '''Create a simple CNN model with three convolutional layers, max pooling layers, and two dense layers.'''
         return simple_cnn(input_shape, num_classes)
         
     def load_data(self):
+        '''Load the training, validation, and test data from CSV files and extract category labels from file paths.'''
         if self.seed:
             np.random.seed(self.seed)
         # Load train, validation, and test data from CSV files
@@ -67,9 +70,11 @@ class ModelTrainer:
         self.test_df = shuffle(self.test_df)
         
     def compile_model(self, optimizer, loss, metrics):
+        '''Compile the model with the given optimizer, loss function, and metrics.'''
         self.model.compile(optimizer=optimizer, loss = loss, metrics=metrics)
         
     def train_model(self, batch_size, epochs, model_save_name):
+        '''Train the model on the training data and validate it on the validation data, saving the best model with highest validation accuracy.'''
         self.train_datagen = ImageDataGenerator(rescale=1./255)
         self.validation_datagen = ImageDataGenerator(rescale=1./255)
         self.test_datagen = ImageDataGenerator(rescale=1./255)
@@ -123,58 +128,10 @@ class ModelTrainer:
             print(f"New best model with validation accuracy {best_val_accuracy} saved as {best_model_path}")
         else:
             print(f"No new best model found. Best validation accuracy remains {best_val_accuracy}.")
-            
-    
-    # def train_model(self, batch_size, epochs, model_save_name):
-    #     # global train_datagen, validation_datagen, test_datagen
-    #     self.train_datagen = ImageDataGenerator(rescale=1./255)
-    #     self.validation_datagen = ImageDataGenerator(rescale=1./255)
-    #     self.test_datagen = ImageDataGenerator(rescale=1./255)
-
-    #     train_generator = self.train_datagen.flow_from_dataframe(
-    #         dataframe=self.train_df,
-    #         directory=self.image_dir,
-    #         x_col="file_path",
-    #         y_col="label",
-    #         target_size=(96, 96),
-    #         color_mode="grayscale",
-    #         batch_size=batch_size,
-    #         class_mode='sparse')
-
-    #     validation_generator = self.validation_datagen.flow_from_dataframe(
-    #         dataframe=self.validation_df,
-    #         directory=self.image_dir,
-    #         x_col="file_path",
-    #         y_col="label",
-    #         target_size=(96, 96),
-    #         color_mode="grayscale",
-    #         batch_size=batch_size,
-    #         class_mode='sparse')
-        
-    #     # Define the checkpoint to save the best model
-    #     model_checkpoint_callback = ModelCheckpoint(
-    #         filepath=model_save_name,  # File path to save the model
-    #         save_best_only=True,  # Only save the best model
-    #         monitor='val_accuracy',  # Monitor validation accuracy
-    #         mode='max')  # Save the model with max validation accuracy
-
-    #     self.history = self.model.fit(
-    #         train_generator,
-    #         steps_per_epoch=self.train_df.shape[0] // batch_size,
-    #         epochs=epochs,
-    #         validation_data=validation_generator,
-    #         validation_steps=self.validation_df.shape[0] // batch_size,
-    #         callbacks=[model_checkpoint_callback])
-        
-        
-        
-    #     # After training, save the final model regardless of its performance
-    #     final_model_path = "final_" + model_save_name  # Prefixing with 'final_' to differentiate
-    #     self.model.save(final_model_path)
-    #     print(f"Final model saved as {final_model_path}")
         
         
     def evaluate_model(self, batch_size):
+        '''Evaluate the model on the test data and print the test accuracy and loss.'''
         global test_generator
         test_generator = self.test_datagen.flow_from_dataframe(
             dataframe=self.test_df,
@@ -192,6 +149,7 @@ class ModelTrainer:
 
         
     def plot_training_history(self, epochs):
+        '''Plot the training and validation accuracy and loss over the specified number of epochs.'''
         acc = self.history.history['accuracy']
         val_acc = self.history.history['val_accuracy']
         loss = self.history.history['loss']
@@ -213,29 +171,9 @@ class ModelTrainer:
         plt.title('Training and Validation Loss')
         plt.show()
         
-    # def plot_confusion_matrix(self):
-    #     y_pred = self.model.predict(test_generator)
-    #     y_pred = np.argmax(y_pred, axis=1)
-    #     y_true = test_generator.classes
-    #     print(test_generator.classes)
-    #     print(np.unique(test_generator.classes, return_counts=True))
-    #     y_pred_classes = np.argmax(y_pred, axis=1)
-    #     print("Predicted classes:", y_pred_classes)
-    #     print("True classes:", y_true)
-    #     print("Unique predicted classes:", np.unique(y_pred_classes))
-    #     class_names = list(test_generator.class_indices.keys())
-        
-    #     cm = confusion_matrix(y_true, y_pred)
-    #     cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]  # Normalize confusion matrix
-
-    #     plt.figure(figsize=(8, 6))
-    #     sns.heatmap(cm_normalized, annot=cm, cmap='Blues', fmt='d', xticklabels=class_names, yticklabels=class_names)
-    #     plt.xlabel('Predicted labels')
-    #     plt.ylabel('True labels')
-    #     plt.title('Confusion Matrix')
-    #     plt.show()
         
     def plot_confusion_matrix(self):
+        '''Plot the confusion matrix for the test data.'''
         y_pred = self.model.predict(test_generator)
         y_pred = np.argmax(y_pred, axis=1)
         y_true = test_generator.classes
@@ -258,6 +196,7 @@ class ModelTrainer:
         plt.show()
 
     def reset_model(self, model):
+        '''Reset the model, history, and evaluation metrics.'''
     # Clear the TensorFlow session
         tf.keras.backend.clear_session()
 
@@ -271,21 +210,4 @@ class ModelTrainer:
         self.validation_accuracy = None    
 
 
-        
-    # def plot_confusion_matrix(self):
-    #     y_pred = self.model.predict(test_generator)
-    #     y_pred = np.argmax(y_pred, axis=1)
-    #     # cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    #     y_true = test_generator.classes
-    #     class_names = list(test_generator.class_indices.keys())
-        
-    #     cm = confusion_matrix(y_true, y_pred)
-    #     cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]  # Normalize confusion matrix
-        
-    #     plt.figure(figsize=(8, 6))  # Adjust the figure size as needed
-    #     sns.heatmap(cm, annot=True, cmap='Blues', fmt='.2f', xticklabels=class_names, yticklabels=class_names)
-    #     plt.xlabel('Predicted labels')
-    #     plt.ylabel('True labels')
-    #     plt.title('Confusion Matrix')
-    #     plt.show()
         
